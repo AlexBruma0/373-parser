@@ -1,56 +1,22 @@
 cmake_minimum_required(VERSION 3.19)
 project(cpp-tree-sitter)
 
-set(PACKAGE_NAME cpp-tree-sitter)
-set(PACKAGE_VERSION 0.0.1)
-set(PACKAGE_STRING "${PACKAGE_NAME} ${PACKAGE_VERSION}")
-set(PACKAGE_BUGREPORT "wsumner@sfu.ca")
-
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-add_compile_options(
-  "$<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall;-Wextra;-Wconversion>"
-  "$<$<AND:$<CXX_COMPILER_ID:GNU,Clang,AppleClang>,$<CONFIG:DEBUG>>:-fno-omit-frame-pointer;-O0;-g;-fsanitize=address,undefined>"
-)
-add_link_options(
-  "$<$<AND:$<CXX_COMPILER_ID:GNU,Clang,AppleClang>,$<CONFIG:DEBUG>>:-fsanitize=address,undefined>"
-)
-
 include(cmake/CPM.cmake)
+set(CMAKE_CXX_STANDARD 17)
 
-# We want to automatically download and provide tree-sitter to users of
-# the package, so pull it in and retrofit cmake dependencies on top of it.
+# Downloads this wrapper library and tree-sitter.
+# Makes them available via the `cpp-tree-sitter` CMake library target.
 CPMAddPackage(
-  NAME tree-sitter
-  GIT_REPOSITORY https://github.com/tree-sitter/tree-sitter.git
-  VERSION 0.20.8
-  DOWNLOAD_ONLY YES
+  NAME cpp-tree-sitter
+  GIT_REPOSITORY https://github.com/nsumner/cpp-tree-sitter.git
+  GIT_TAG v0.0.1
 )
 
-if (tree-sitter_ADDED)
-  add_library(tree-sitter)
-  target_sources(tree-sitter
-    PRIVATE
-      "${tree-sitter_SOURCE_DIR}/lib/src/lib.c"
-  )
-  target_include_directories(tree-sitter
-    PRIVATE
-      $<BUILD_INTERFACE:${tree-sitter_SOURCE_DIR}/lib/src>
-    PUBLIC
-      $<INSTALL_INTERFACE:include>
-      $<BUILD_INTERFACE:${tree-sitter_SOURCE_DIR}/lib/include>
-  )
-  target_compile_options(tree-sitter
-    PRIVATE
-      "$<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wno-conversion>"
-  )
-endif()
-
-
-function(add_grammar_from_repo NAME REPO VERSION)
+function(add_grammar_from_repo_no_version NAME REPO TAG)
   CPMAddPackage(
     NAME ${NAME}
     GIT_REPOSITORY ${REPO}
-    VERSION ${VERSION}
+    GIT_TAG ${TAG}
     DOWNLOAD_ONLY YES
   )
 
@@ -81,16 +47,20 @@ function(add_grammar_from_repo NAME REPO VERSION)
         "$<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wno-unused-but-set-variable>"
     )
   endif()
-endfunction(add_grammar_from_repo)
+endfunction(add_grammar_from_repo_no_version)
 
-
-add_library(cpp-tree-sitter INTERFACE)
-target_include_directories(cpp-tree-sitter
-  INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
+add_grammar_from_repo_no_version(tree-sitter-socialgaming
+  https://github.com/nsumner/tree-sitter-socialgaming.git
+  7ad013c8773b07e27e7eb7a9e4779d473a85c24f
 )
-target_link_libraries(cpp-tree-sitter
-  INTERFACE
-    tree-sitter
+
+# Use the library in a demo program.
+add_executable(demo)
+target_sources(demo
+  PRIVATE
+    demo.cpp
+)
+target_link_libraries(demo
+  tree-sitter-socialgaming
+  cpp-tree-sitter
 )
